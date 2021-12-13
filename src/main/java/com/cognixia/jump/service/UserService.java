@@ -29,22 +29,31 @@ public class UserService {
 	@Autowired 
 	JwtUtil jwtUtil;
 	
-	public boolean createNewUser(AuthenticationRequest registeringUser) throws Exception {
+	public User getUserById(Long id) throws ResourceNotFoundException {
+		Optional<User> found = userRepo.findById(id);
 		
-		Optional<User> isAlreadyRegistered = userRepo.findByUsername(registeringUser.getUsername());
+		if(found.isPresent())
+			return found.get();
+		throw new ResourceNotFoundException("User",id);
+	}
+	public User getUserByUsername(String username) throws ResourceNotFoundException {
+		Optional<User> found = userRepo.findByUsername(username);
 		
-		if (isAlreadyRegistered.isPresent()) {
-			throw new UserAlreadyExistsException(registeringUser.getUsername());
+		if(found.isPresent())
+			return found.get();
+		throw new ResourceNotFoundException("User",username);
+	}
+	
+	public User createNewUser(User registeringNewUser) throws Exception{
+		Optional<User> isAlreadyRegistered = userRepo.findByUsername(registeringNewUser.getUsername());
+		
+		if(isAlreadyRegistered.isPresent()) {
+			throw new UserAlreadyExistsException(registeringNewUser.getUsername());
 		}
 		
-		User newUser = new User();
-		newUser.setUsername(registeringUser.getUsername());
-		newUser.setPassword(passwordEncoder.encode(registeringUser.getPassword()));
-		newUser.setEnabled(true);
-		newUser.setRole(Role.valueOf("ROLE_USER"));
+		registeringNewUser.setPassword(passwordEncoder.encode(registeringNewUser.getPassword()));
+		return userRepo.save(registeringNewUser);
 		
-		userRepo.save(newUser);
-		return true;
 	}
 	
 	public boolean promoteUserAuthorization(AuthenticationRequest user) throws Exception {
@@ -108,6 +117,24 @@ public class UserService {
 		userRepo.updatePassword(passwordEncoder.encode(newPassword), user.getId());
 		userRepo.save(user);
 		return true;
+	}
+	
+	public User updateUsernamePassword(AuthenticationRequest updatingUser, User currentUser) {
+		currentUser.setUsername(updatingUser.getUsername());
+		currentUser.setPassword(passwordEncoder.encode(updatingUser.getPassword()));
+		userRepo.save(currentUser);	
+		return currentUser;
+		
+	}
+	
+	public User deleteUser(Long id) throws ResourceNotFoundException {
+		Optional<User> found = userRepo.findById(id);
+		if(found.isPresent()) {
+			User deleted = found.get();
+			userRepo.delete(deleted);
+			return deleted;
+		}
+		throw new ResourceNotFoundException("User", id);
 	}
 	
 }
